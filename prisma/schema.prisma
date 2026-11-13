@@ -1,0 +1,453 @@
+// Studio CMS — PostgreSQL schema (English-only site)
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters", "queryCompiler"]
+  engineType      = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum SubmissionStatus {
+  NEW
+  READ
+  ARCHIVED
+  SPAM
+}
+
+// ───────────────────────── Access control ─────────────────────────
+
+model Role {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  description String?
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  passwordHash String
+  roleId       String
+  role         Role              @relation(fields: [roleId], references: [id])
+  active       Boolean           @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  sessions     Session[]
+  revisions    ContentRevision[]
+  auditLogs    AuditLog[]
+  articles     Article[]
+  media        Media[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
+// ───────────────────────── SEO ─────────────────────────
+
+model SEOSettings {
+  id            String   @id @default(cuid())
+  title         String?
+  description   String?
+  canonical     String?
+  ogTitle       String?
+  ogDescription String?
+  ogImageId     String?
+  ogImage       Media?   @relation("SeoOgImage", fields: [ogImageId], references: [id], onDelete: SetNull)
+  twitterCard   String   @default("summary_large_image")
+  robotsIndex   Boolean  @default(true)
+  robotsFollow  Boolean  @default(true)
+  focusKeyword  String?
+  inSitemap     Boolean  @default(true)
+  jsonLd        Json?
+  updatedAt     DateTime @updatedAt
+
+  page    Page?
+  project Project?
+  service Service?
+  article Article?
+}
+
+model Redirect {
+  id          String   @id @default(cuid())
+  source      String   @unique
+  destination String
+  permanent   Boolean  @default(true)
+  enabled     Boolean  @default(true)
+  hits        Int      @default(0)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ───────────────────────── Pages & sections ─────────────────────────
+
+model Page {
+  id                String         @id @default(cuid())
+  title             String
+  /// Path without leading slash. "" = home. May contain "/" for nested pages.
+  slug              String         @unique
+  status            ContentStatus  @default(DRAFT)
+  /// Snapshot of sections at publish time — what the public site renders.
+  publishedSections Json?
+  publishedAt       DateTime?
+  /// System pages (home, work…) cannot be deleted or re-slugged.
+  system            Boolean        @default(false)
+  seoId             String?        @unique
+  seo               SEOSettings?   @relation(fields: [seoId], references: [id], onDelete: SetNull)
+  sections          PageSection[]
+  deletedAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+/// Working-copy (draft) sections. Owned by exactly one of page / project / service.
+model PageSection {
+  id        String   @id @default(cuid())
+  type      String
+  label     String?
+  order     Int
+  enabled   Boolean  @default(true)
+  data      Json
+  pageId    String?
+  page      Page?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId, order])
+  @@index([projectId, order])
+  @@index([serviceId, order])
+}
+
+model SectionTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ───────────────────────── Portfolio ─────────────────────────
+
+model Service {
+  id                String          @id @default(cuid())
+  title             String
+  slug              String          @unique
+  tagline           String?
+  summary           String?
+  /// Bullet list of offerings ("Exterior renderings", …) — also used by the contact brief.
+  offerings         String[]
+  coverId           String?
+  cover             Media?          @relation("ServiceCover", fields: [coverId], references: [id], onDelete: SetNull)
+  order             Int             @default(0)
+  status            ContentStatus   @default(DRAFT)
+  publishedSections Json?
+  publishedAt       DateTime?
+  seoId             String?         @unique
+  seo               SEOSettings?    @relation(fields: [seoId], references: [id], onDelete: SetNull)
+  sections          PageSection[]
+  projects          Project[]
+  articles          Article[]
+  deletedAt         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model ProjectCategory {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  order    Int       @default(0)
+  projects Project[]
+}
+
+model Deliverable {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  order    Int       @default(0)
+  projects Project[]
+}
+
+model Industry {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  order    Int       @default(0)
+  projects Project[]
+}
+
+model Project {
+  id                String            @id @default(cuid())
+  title             String
+  slug              String            @unique
+  client            String?
+  year              Int?
+  location          String?
+  /// One-line card summary (reel cards, lists).
+  summary           String?
+  /// Opening statement on the case study page.
+  lead              String?
+  servicesText      String?
+  /// true → has a public case-study page. false → work-wall tile only.
+  isCaseStudy       Boolean           @default(false)
+  showOnWall        Boolean           @default(true)
+  featured          Boolean           @default(false)
+  /// Work wall tile aspect: "4/5" | "3/2" | "1/1" | "16/9"
+  wallAspect        String            @default("4/5")
+  coverId           String?
+  cover             Media?            @relation("ProjectCover", fields: [coverId], references: [id], onDelete: SetNull)
+  /// Optional loop video for hero / tiles
+  videoId           String?
+  video             Media?            @relation("ProjectVideo", fields: [videoId], references: [id], onDelete: SetNull)
+  serviceId         String?
+  service           Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  categories        ProjectCategory[]
+  deliverables      Deliverable[]
+  industries        Industry[]
+  order             Int               @default(0)
+  status            ContentStatus     @default(DRAFT)
+  publishedSections Json?
+  publishedAt       DateTime?
+  seoId             String?           @unique
+  seo               SEOSettings?      @relation(fields: [seoId], references: [id], onDelete: SetNull)
+  sections          PageSection[]
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([status, deletedAt, order])
+}
+
+model Article {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  excerpt     String?
+  /// Tiptap / ProseMirror JSON document
+  body        Json?
+  coverId     String?
+  cover       Media?        @relation("ArticleCover", fields: [coverId], references: [id], onDelete: SetNull)
+  authorId    String?
+  author      User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  services    Service[]
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  seoId       String?       @unique
+  seo         SEOSettings?  @relation(fields: [seoId], references: [id], onDelete: SetNull)
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, deletedAt, publishedAt])
+}
+
+// ───────────────────────── Media ─────────────────────────
+
+model MediaFolder {
+  id        String        @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    MediaFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MediaFolder[] @relation("FolderTree")
+  media     Media[]
+  createdAt DateTime      @default(now())
+}
+
+model Media {
+  id           String       @id @default(cuid())
+  kind         MediaKind
+  /// "cloudinary" | "local"
+  provider     String
+  /// Provider key: Cloudinary public_id or relative local path
+  key          String
+  url          String
+  filename     String
+  mime         String
+  width        Int?
+  height       Int?
+  bytes        Int?
+  duration     Float?
+  blurDataUrl  String?
+  alt          String       @default("")
+  title        String?
+  description  String?
+  posterId     String?
+  poster       Media?       @relation("VideoPoster", fields: [posterId], references: [id], onDelete: SetNull)
+  posterOf     Media[]      @relation("VideoPoster")
+  folderId     String?
+  folder       MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  uploadedById String?
+  uploadedBy   User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  deletedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  seoOgImages     SEOSettings[] @relation("SeoOgImage")
+  serviceCovers   Service[]     @relation("ServiceCover")
+  projectCovers   Project[]     @relation("ProjectCover")
+  projectVideos   Project[]     @relation("ProjectVideo")
+  articleCovers   Article[]     @relation("ArticleCover")
+
+  @@index([kind, deletedAt, createdAt])
+}
+
+// ───────────────────────── Site config ─────────────────────────
+
+model GlobalSettings {
+  id            String   @id @default("global")
+  siteName      String
+  tagline       String?
+  email         String?
+  phone         String?
+  address       String?
+  logoId        String?
+  logoMarkId    String?
+  faviconId     String?
+  /// [{ label, href }]
+  socials       Json     @default("[]")
+  /// { accent, accentHi, accentLo, background, text, font }
+  theme         Json     @default("{}")
+  /// { titleTemplate, description, ogImageId, twitterHandle }
+  seoDefaults   Json     @default("{}")
+  /// { showLoader, customCursor, smoothScroll }
+  features      Json     @default("{}")
+  footerCta     String   @default("Let's talk")
+  copyright     String?
+  cookieText    String?
+  analyticsId   String?
+  updatedAt     DateTime @updatedAt
+}
+
+model NavigationMenu {
+  id    String           @id @default(cuid())
+  key   String           @unique
+  name  String
+  items NavigationItem[]
+}
+
+model NavigationItem {
+  id      String         @id @default(cuid())
+  menuId  String
+  menu    NavigationMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  label   String
+  href    String
+  order   Int            @default(0)
+  newTab  Boolean        @default(false)
+  enabled Boolean        @default(true)
+
+  @@index([menuId, order])
+}
+
+// ───────────────────────── Leads & history ─────────────────────────
+
+model ContactSubmission {
+  id          String           @id @default(cuid())
+  name        String
+  email       String
+  company     String?
+  phone       String?
+  location    String?
+  disciplines String[]
+  services    String[]
+  projectName String?
+  description String
+  goals       String?
+  deliverables String?
+  referenceUrl String?
+  budget      String?
+  timeline    String?
+  stage       String?
+  filesUrl    String?
+  contactPref String?
+  notes       String?
+  status      SubmissionStatus @default(NEW)
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime         @default(now())
+
+  @@index([status, createdAt])
+}
+
+model ContentRevision {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  snapshot   Json
+  note       String?
+  authorId   String?
+  author     User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String?
+  entityId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

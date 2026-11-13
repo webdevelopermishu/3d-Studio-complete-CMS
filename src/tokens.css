@@ -1,0 +1,173 @@
+/*
+ * Design tokens — derived from the reference audit (docs/REFERENCE_AUDIT.md §6).
+ * Single source of truth: components and the Tailwind @theme read only these vars.
+ * Brand-specific values (accent, font) are overridable at runtime from
+ * GlobalSettings.themeTokens, which is injected as a <style> on :root.
+ */
+
+:root {
+  /* ── Palette ─────────────────────────────────────────── */
+  --white: #ffffff;
+  --black: #000000;
+  --ink-hi: #111111;
+  --charcoal: #1a1a1a;
+
+  /* Accent — placeholder until branding is decided (CMS-overridable) */
+  --accent: #17299c;
+  --accent-hi: #3a4cc0;
+  --accent-lo: #101e76;
+
+  /* Surfaces: default "ink" ground (dark canvas) */
+  --bg: var(--black);
+  --bg-raised: var(--ink-hi);
+  --bg-sunken: #0c0c0c;
+  --surface-inverse: var(--white);
+
+  /* Text on ink — alpha scale observed on the reference.
+     Minimum 0.56 for informative text (AA on #000). */
+  --text: var(--white);
+  --text-90: rgb(255 255 255 / 0.9);
+  --text-86: rgb(255 255 255 / 0.86);
+  --text-82: rgb(255 255 255 / 0.82);
+  --text-78: rgb(255 255 255 / 0.78);
+  --text-72: rgb(255 255 255 / 0.72);
+  --text-muted: rgb(255 255 255 / 0.64);
+  --text-faint: rgb(255 255 255 / 0.56);
+  --text-decor: rgb(255 255 255 / 0.44); /* decorative only */
+
+  --line: rgb(255 255 255 / 0.18);
+  --line-strong: rgb(255 255 255 / 0.34);
+  --scrim: linear-gradient(180deg, rgb(0 0 0 / 0) 35%, rgb(0 0 0 / 0.55) 100%);
+  --selection: color-mix(in srgb, var(--accent) 22%, transparent);
+
+  --btn-bg: var(--accent);
+  --btn-bg-hover: var(--accent-lo);
+  --btn-fg: var(--white);
+
+  /* ── Typography ──────────────────────────────────────── */
+  --font-sans: "Source Sans 3", "Source Sans Pro", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --w-light: 300;
+  --w-regular: 400;
+  --w-semibold: 600;
+  --w-bold: 700;
+
+  --fs-hero: clamp(3rem, 7.7vw, 8.5rem); /* 110.9px @1440 — display / H1 / discipline titles */
+  --fs-giant: clamp(4rem, 12.5vw, 11.25rem); /* 180px @1440 — footer "LET'S TALK" */
+  --fs-brief: clamp(3rem, 8.4vw, 7.5rem); /* 121px @1440 — brief CTA */
+  --fs-title: clamp(2.25rem, 5.6vw, 6.25rem); /* 80.6px */
+  --fs-figure: clamp(2.5rem, 5.8vw, 6rem); /* 83.5px stat numbers */
+  --fs-statement: clamp(2rem, 4.6vw, 5rem); /* 66px */
+  --fs-subtitle: clamp(1.5rem, 2.55vw, 2.625rem); /* 36.7px */
+  --fs-heading: clamp(1.2rem, 1.95vw, 1.875rem);
+  --fs-lead: clamp(1.25rem, 1.05rem + 0.8vw, 1.625rem); /* 26px */
+  --fs-reading: clamp(1.125rem, 0.9rem + 0.75vw, 1.5rem); /* 24px */
+  --fs-body: 1.0625rem; /* 17px */
+  --fs-body-sm: 0.9375rem; /* 15px */
+  --fs-label: 0.75rem; /* 12px uppercase */
+  --fs-micro: 0.6875rem; /* 11px */
+
+  --lh-none: 0.92;
+  --lh-display: 0.98;
+  --lh-tight: 1.06;
+  --lh-snug: 1.18;
+  --lh-normal: 1.35;
+  --lh-reading: 1.5;
+  --lh-body: 1.58;
+  --lh-loose: 1.7;
+
+  --tracking-display: -0.03em;
+  --tracking-brief: -0.04em;
+  --tracking-title: -0.035em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
+  --tracking-label: 0.14em;
+
+  --measure: 66ch;
+
+  /* ── Space & layout ──────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 8rem;
+  --space-11: 12rem;
+
+  --section-y: clamp(5rem, 11vw, 11rem);
+  --section-y-sm: clamp(3rem, 6vw, 5.5rem);
+  --gutter-x: clamp(1.25rem, 4vw, 6rem);
+  --maxw: 1680px;
+  --maxw-text: 46rem;
+  --maxw-lead: 60rem;
+  --grid-cols: 12;
+  --grid-gap: clamp(1rem, 2.1vw, 2.5rem);
+
+  --radius-0: 0px;
+  --radius-sm: 2px;
+  --radius-mark: 3px;
+
+  --nav-h: 84px;
+  --nav-h-scrolled: 64px;
+
+  --z-nav: 100;
+  --z-menu: 200;
+  --z-overlay: 300;
+  --z-curtain: 400;
+
+  /* ── Media ratios ────────────────────────────────────── */
+  --ratio-hero-frame: 16 / 10;
+  --ratio-case-card: 9 / 8;
+  --ratio-video: 16 / 9;
+  --ratio-og: 1200 / 630;
+
+  /* ── Motion ──────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 200ms;
+  --dur: 380ms;
+  --dur-slow: 640ms;
+  --dur-slower: 1000ms;
+  --parallax-overscan: 16%;
+  --parallax-overscan-hero: 12%;
+
+  --tr-color: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+  --tr-opacity: opacity var(--dur) var(--ease-out);
+  --tr-transform: transform var(--dur-slow) var(--ease-out);
+}
+
+/* Paper ground (sections flagged data-ground="paper") */
+[data-ground="paper"] {
+  --bg: var(--white);
+  --text: var(--black);
+  --text-72: rgb(0 0 0 / 0.72);
+  --text-muted: rgb(0 0 0 / 0.6);
+  --text-faint: rgb(0 0 0 / 0.55);
+  --line: rgb(0 0 0 / 0.14);
+  --line-strong: rgb(0 0 0 / 0.28);
+}
+
+/*
+ * Breakpoints (reference): primary switch at 900px.
+ *   --bp-sm 560 · --bp-md 760 · --bp-scene 901 · --bp-lg 1024 · --bp-xl 1200
+ * Rich scroll scenes are enabled only for:
+ *   (min-width: 901px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+    --dur-slower: 0ms;
+    --parallax-overscan: 0%;
+    --parallax-overscan-hero: 0%;
+  }
+}
